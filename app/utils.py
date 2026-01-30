@@ -15,7 +15,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from functools import wraps
 
-from .models import User
+from .models import User,AuditLog
 
 
 
@@ -218,3 +218,45 @@ def check_authorization(allowed_roles=[]):
     return decorator
 
 # ==================== Decorators End  =============================
+
+# ===================== Log ==================================
+
+def create_audit_log(
+    *,
+    user_id,
+    user_role,
+    action,
+    request=None,
+    entity_type=None,
+    entity_id=None,
+    status="SUCCESS"
+):
+    """
+    Create an audit log entry.
+
+    Parameters:
+    - user_id (UUID)
+    - action (str)
+    - request (HttpRequest, optional)
+    """
+
+    ip_address = None
+    user_agent = None
+
+    if request:
+        ip_address = request.META.get("REMOTE_ADDR")
+        user_agent = request.META.get("HTTP_USER_AGENT")
+
+    AuditLog.objects.create(
+        user_id=user_id,
+        user_role=user_role,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        status=status,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        created_at=timezone.now()
+    )
+
+    

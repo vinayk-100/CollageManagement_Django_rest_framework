@@ -6,8 +6,9 @@ from rest_framework.decorators import api_view
 from django.contrib.auth.hashers import make_password,check_password
 
 from .. models import User,personal_details,Student
+from ..utils import check_authorization
 from .. serializers import UserSerializer,personal_details_Serializer,Student_Serializer
-from .. utils import auto_generate_username,send_email_with_signup_token,generate_activation_token
+from .. utils import auto_generate_username,send_email_with_signup_token,generate_activation_token,create_audit_log
 
 from django.utils import timezone
 
@@ -163,12 +164,14 @@ def view_user_details(request,id):
         return JsonResponse({"exception": str(e)}, status=500)
 
 
+@check_authorization(allowed_roles=["admin", "manager"])
 @api_view(['POST'])
 def add_user(request):
 
     student_data = {}
 
     try:
+        
 
         data = request.data.copy()
         token = generate_activation_token()
@@ -224,6 +227,20 @@ def add_user(request):
             name=personal_info_data["first_name"],
             token = token
         )
+
+        print(request.user)
+        print(request.user.is_authenticated)
+
+        # audit log
+        create_audit_log(
+            user_id=request.user_id,
+            user_role=request.role,
+            action="CREATE USER",
+            request=request,
+            entity_type="USER",
+            entity_id=user.id
+        )
+
 
         return JsonResponse(
             {
